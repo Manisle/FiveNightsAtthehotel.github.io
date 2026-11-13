@@ -1,0 +1,864 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Five Nights at the Hotel</title> 
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#08090d;color:white;
+  font-family:Arial,sans-serif;overflow:hidden;
+}
+#game{
+  height:100vh;display:flex;flex-direction:column;
+  background:radial-gradient(#25252b,#050507 75%);
+}
+#hud{
+  display:flex;justify-content:space-between;
+  padding:15px 22px;background:#080808;
+  border-bottom:2px solid #444;z-index:5;
+}
+#clock{font-size:25px;font-weight:bold}
+#power{font-size:18px;color:#77ff9b}
+#office{
+  flex:1;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(90deg,#08080a,#24242a 50%,#08080a);
+}
+.wall{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,
+  transparent 0px,transparent 100px,#ffffff06 101px,#ffffff06 103px);
+}
+.desk{
+  position:absolute;bottom:0;width:65%;height:25%;
+  background:linear-gradient(#282329,#09090b);
+  border-top:8px solid #494047;
+  box-shadow:0 -20px 70px #000;
+}
+.monitor{
+  position:absolute;bottom:22%;width:180px;height:100px;
+  background:#080d0b;border:9px solid #333;
+  box-shadow:0 0 25px #000;
+}
+.door{
+  position:absolute;top:0;bottom:0;width:19%;
+  background:#111;border:5px solid #343434;
+  display:flex;align-items:center;justify-content:center;
+  transition:.2s;
+}
+#leftDoor{left:0}
+#rightDoor{right:0}
+.door.closed{background:linear-gradient(90deg,#555,#171717,#555)}
+.door span{font-size:35px;color:#777}
+.door.closed span{color:#ff3333}
+.door.light{background:#c5b58b;color:#111}
+.door.light span{color:#111}
+#officeText{
+  position:absolute;top:17%;font-size:13px;
+  color:#999;letter-spacing:3px;
+}
+.controls {
+  display:flex;
+  justify-content:center;
+  gap:9px;
+  padding:15px;
+  background:#080808;
+  flex-wrap:wrap;
+  border-top:2px solid #444;
+  z-index:6;
+}
+button{
+  color:white;background:#292929;border:2px solid #777;
+  padding:13px 17px;font-size:14px;cursor:pointer;
+  font-weight:bold;transition:.15s;
+}
+button:hover{background:#555}
+button.active{background:#a32626;border-color:red}
+button:disabled{opacity:.3;cursor:not-allowed}
+#camera{
+  display:none;position:absolute;inset:0;
+  z-index:4;background:#101515;
+  padding:20px;
+  background-image:repeating-linear-gradient(
+  0deg,#ffffff08 0px,#ffffff08 1px,transparent 2px,transparent 4px);
+}
+#camera.show{display:block}
+#camTitle{font-size:25px;color:#8cffb0}
+#camRoom{
+  height:65%;margin:15px auto;
+  border:4px solid #63746b;background:#171e1b;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;text-align:center;
+  box-shadow:inset 0 0 80px black;
+}
+#camRoom h2{font-size:30px}
+#camRoom p{color:#aaa}
+#camCharacters{font-size:48px;letter-spacing:15px}
+#camButtons{
+  display:flex;justify-content:center;gap:8px;flex-wrap:wrap;
+}
+#camButtons button{padding:10px 13px}
+
+#camMap {
+  position:absolute;
+  right:15px;
+  top:85px;
+  width:280px;
+  background:#090e0c;
+  border:2px solid #6c8875;
+  padding:10px;
+  box-shadow:0 0 20px #000;
+  z-index:5;
+}
+
+#camMap h3 {
+  text-align:center;
+  color:#8cffb0;
+  font-size:14px;
+  margin:2px 0 10px;
+}
+
+.floorplan {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:85px 45px 85px 65px;
+  gap:4px;
+}
+
+.map-room {
+  background:#202b25;
+  border:2px solid #65766a;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:9px;
+  cursor:pointer;
+  position:relative;
+  padding:3px;
+}
+
+.map-room b {
+  color:#8cffb0;
+  font-size:11px;
+}
+
+.map-room span {
+  color:#bbb;
+  margin-top:4px;
+}
+
+.map-room.selected {
+  background:#38583e;
+  border:2px solid #adffb9;
+  box-shadow:0 0 12px #55ff88;
+}
+
+.map-enemies {
+  color:#ff4444;
+  font-size:19px;
+  min-height:20px;
+}
+
+.map-corridor {
+  grid-column:1/4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#151515;
+  border:1px dashed #777;
+  color:#aaa;
+  font-size:10px;
+}
+
+.map-office {
+  grid-column:2;
+  background:#303044;
+  border:2px solid #aaaaff;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  font-size:10px;
+  color:white;
+}
+
+.map-office b {
+  color:#aaaaff;
+}
+
+@media(max-width:600px) {
+  #camMap {
+    width:190px;
+    right:5px;
+    top:75px;
+    padding:5px;
+  }
+
+  .floorplan {
+    grid-template-rows:65px 30px 65px 50px;
+    gap:2px;
+  }
+
+  .map-room {
+    font-size:7px;
+  }
+
+  .map-room b {
+    font-size:8px;
+  }
+
+  .map-enemies {
+    font-size:14px;
+  }
+}
+
+#message{
+  position:absolute;bottom:120px;color:#ff4444;
+  font-weight:bold;text-align:center;
+}
+#overlay{
+  position:absolute;inset:0;background:black;
+  z-index:10;display:flex;align-items:center;
+  justify-content:center;flex-direction:column;
+  text-align:center;padding:20px;
+}
+#overlay h1{font-size:clamp(30px,6vw,65px);color:#d22}
+#overlay p{color:#bbb;max-width:550px;line-height:1.6}
+#overlay button{font-size:18px;padding:16px 30px}
+#scare{
+  display:none;position:absolute;inset:0;z-index:9;
+  background:#080000;align-items:center;
+  justify-content:center;flex-direction:column;
+  animation:shake .08s infinite;
+}
+#scare.show{display:flex}
+#scareFace{font-size:min(50vw,350px);filter:drop-shadow(0 0 30px red)}
+#scare h1{color:red;font-size:45px}
+@keyframes shake{
+  0%{transform:translate(3px,2px)}
+  50%{transform:translate(-3px,-2px)}
+  100%{transform:translate(2px,-3px)}
+}
+#hint{color:#888;font-size:12px;text-align:center;padding:5px}
+@media(max-width:600px){
+ .door{width:17%}
+ .door span{font-size:20px}
+ .controls{gap:5px;padding:7px}
+ button{padding:10px 9px;font-size:11px}
+ #camMap{width:110px;right:8px;top:75px}
+}
+
+/* MOBILE SUPPORT */
+@media screen and (max-width: 700px) {
+
+  body {
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  #game {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  #hud {
+    padding: 10px;
+  }
+
+  #clock {
+    font-size: 20px;
+  }
+
+  #office {
+    min-height: 0;
+  }
+
+  .door {
+    width: 15%;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 8px;
+    z-index: 6;
+  }
+
+  .controls button {
+    min-height: 48px;
+    padding: 8px 3px;
+    font-size: 10px;
+    touch-action: manipulation;
+  }
+
+  #camera {
+    padding: 8px;
+    overflow-y: auto;
+    bottom: 0;
+  }
+
+  #camRoom {
+    height: 38%;
+    min-height: 140px;
+    margin: 10px 0;
+  }
+
+  #camMap {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-width: 280px;
+    margin: 10px auto;
+  }
+
+  #camButtons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  #camButtons button {
+    padding: 12px 3px;
+    font-size: 11px;
+    min-height: 44px;
+  }
+
+  #hint {
+    font-size: 9px;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+}
+
+</style>
+</head>
+<body>
+<div id="game">
+
+<div id="hud">
+  <div>
+    <div id="clock">12 AM</div>
+    <small>NIGHT 1</small>
+  </div>
+  <div id="power">POWER: 100%</div>
+</div>
+
+<div id="office">
+  <div class="wall"></div>
+  <div id="officeText">SECURITY OFFICE</div>
+
+<div class="controls">
+  <button id="leftLight" onclick="toggleLight('left')">
+    LEFT LIGHT
+  </button>
+
+  <button id="leftButton" onclick="toggleDoor('left')">
+    LEFT DOOR
+  </button>
+
+  <button id="camButton" onclick="toggleCamera()">
+    OPEN CAMERAS
+  </button>
+
+  <button id="rightButton" onclick="toggleDoor('right')">
+    RIGHT DOOR
+  </button>
+
+  <button id="rightLight" onclick="toggleLight('right')">
+    RIGHT LIGHT
+  </button>
+</div>
+
+  <div class="door" id="leftDoor"><span>LEFT</span></div>
+  <div class="door" id="rightDoor"><span>RIGHT</span></div>
+
+  <div class="monitor"></div>
+  <div class="desk"></div>
+
+  <div id="camera">
+    <div id="camTitle">CAMERAS ACTIVE // SIGNAL OK</div>
+    <div id="camRoom">
+      <h2 id="roomName">SHOW STAGE</h2>
+      <div id="camCharacters">📺</div>
+      <p id="roomDescription">The stage is quiet...</p>
+    </div>
+  <div id="camButtons">
+  <button onclick="selectCam(0)">CAM 01</button>
+  <button onclick="selectCam(1)">CAM 02</button>
+  <button onclick="selectCam(2)">CAM 03</button>
+  <button onclick="selectCam(3)">CAM 04</button>
+  <button onclick="selectCam(4)">CAM 05</button>
+  <button onclick="selectCam(5)">CAM 06</button>
+</div>
+
+<button onclick="toggleCamera()">CLOSE CAMERAS</button>
+    
+<div id="camMap">
+  <h3>HOTEL FLOOR PLAN</h3>
+
+  <div class="floorplan">
+    <div class="map-room" data-cam="5">
+      <b>CAM 06</b>
+      <span>BACK ROOM</span>
+      <div class="map-enemies" id="map5"></div>
+    </div>
+
+    <div class="map-room" data-cam="0">
+      <b>CAM 01</b>
+      <span>SHOW STAGE</span>
+      <div class="map-enemies" id="map0"></div>
+    </div>
+
+    <div class="map-room" data-cam="1">
+      <b>CAM 02</b>
+      <span>DINING</span>
+      <div class="map-enemies" id="map1"></div>
+    </div>
+
+    <div class="map-room" data-cam="2">
+      <b>CAM 03</b>
+      <span>STORAGE</span>
+      <div class="map-enemies" id="map2"></div>
+    </div>
+
+    <div class="map-corridor">MAIN CORRIDOR</div>
+
+    <div class="map-room" data-cam="3">
+      <b>CAM 04</b>
+      <span>WEST HALL</span>
+      <div class="map-enemies" id="map3"></div>
+    </div>
+
+    <div class="map-room" data-cam="4">
+      <b>CAM 05</b>
+      <span>EAST HALL</span>
+      <div class="map-enemies" id="map4"></div>
+    </div>
+
+    <div class="map-office">
+      <b>YOU</b>
+      <span>SECURITY OFFICE</span>
+      🖥️
+    </div>
+  </div>
+</div>
+
+    </div>
+  </div>
+  <div id="message"></div>
+</div>
+
+
+
+<div id="scare">
+  <div id="scareFace">🐻</div>
+  <h1>YOU GOT CAUGHT</h1>
+</div>
+
+<div id="overlay">
+  <h1>FIVE NIGHTS<br>AT THE HOTEL</h1>
+  <p>
+    so,you just got hired by a hotel as the night gaurd<br>
+    this building looks scary with different animatornics...
+    watch cams , close doors and remember...
+    the ANIMATRONICS GET QUIRKY AT NIGHT
+  </p>
+  <button onclick="startGame()">START NIGHT</button>
+</div>
+</div>
+
+<script>
+const rooms=[
+  {name:"SHOW STAGE",description:"Where the band performs."},
+  {name:"DINING AREA",description:"Tables and chairs are scattered around."},
+  {name:"STORAGE ROOM",description:"Old equipment lies everywhere."},
+  {name:"WEST HALL",description:"A dark hallway leading to your office."},
+  {name:"EAST HALL",description:"Something might be watching you."},
+  {name:"BACK ROOM",description:"You probably shouldn't be here."}
+];
+
+let running=false;
+let power=100;
+let hour=0;
+let currentCam=0;
+let cameraOpen=false;
+let doors={left:false,right:false};
+let lights={left:false,right:false};
+let enemies=[];
+let gameTimers=[];
+let startTime=0;
+let lastPower=Date.now();
+
+function makeEnemies(){
+  enemies=[
+    {
+      name:"BARNABY",
+      face:"🐻",
+      side:"left",
+      route:[0,1,2,3],
+      pos:0,
+      aggression:0.35,
+      attack:false
+    },
+    {
+      name:"SCRATCH",
+      face:"🐰",
+      side:"right",
+      route:[0,2,1,4],
+      pos:0,
+      aggression:0.30,
+      attack:false
+    },
+    {
+      name:"PIP",
+      face:"🦊",
+      side:"left",
+      route:[5,2,3],
+      pos:0,
+      aggression:0.40,
+      attack:false
+    }
+  ];
+}
+
+function startGame(){
+  clearAllTimers();
+  power=100;
+  hour=0;
+  currentCam=0;
+  cameraOpen=false;
+  doors={left:false,right:false};
+  lights={left:false,right:false};
+  makeEnemies();
+  running=true;
+  lastPower=Date.now();
+  startTime=Date.now();
+
+  document.getElementById("overlay").style.display="none";
+  document.getElementById("scare").classList.remove("show");
+  document.getElementById("camera").classList.remove("show");
+  document.getElementById("leftDoor").classList.remove("closed");
+  document.getElementById("rightDoor").classList.remove("closed");
+
+  updateUI();
+
+  gameTimers.push(setInterval(gameTick,1000));
+  gameTimers.push(setInterval(moveEnemies,5000));
+  gameTimers.push(setInterval(updateClock,1000));
+  gameTimers.push(setInterval(updatePower,1000));
+}
+
+function clearAllTimers(){
+  gameTimers.forEach(clearInterval);
+  gameTimers=[];
+}
+
+function gameTick(){
+  if(!running)return;
+
+  // Check animatronic attacks
+  enemies.forEach(e=>{
+    if(e.attack){
+      if(!doors[e.side]){
+        loseGame(e);
+      }else{
+        e.attack=false;
+        e.pos=Math.max(0,e.pos-2);
+        showMessage(e.name+" RETREATED!");
+      }
+    }
+  });
+}
+
+function moveEnemies(){
+  if(!running)return;
+
+  enemies.forEach(e=>{
+    if(e.attack)return;
+
+    let chance=e.aggression+hour*0.07;
+    if(cameraOpen && currentCam===e.route[e.pos]){
+      chance*=0.55;
+    }
+
+    if(Math.random()<chance){
+      e.pos=Math.min(e.pos+1,e.route.length-1);
+
+      if(e.pos===e.route.length-1){
+        e.attack=true;
+      }
+    }
+  });
+
+  updateCamera();
+  checkLights();
+}
+
+function updateClock(){
+  if(!running)return;
+  let elapsed=(Date.now()-startTime)/1000;
+  hour=Math.floor(elapsed/30);
+
+  if(hour>=6){
+    winGame();
+    return;
+  }
+
+  document.getElementById("clock").textContent=
+    (hour===0?12:hour)+" AM";
+}
+
+function updatePower(){
+  if(!running)return;
+
+  let drain=0.09;
+  if(doors.left)drain+=0.22;
+  if(doors.right)drain+=0.22;
+  if(lights.left)drain+=0.13;
+  if(lights.right)drain+=0.13;
+  if(cameraOpen)drain+=0.14;
+
+  power-=drain;
+
+  if(power<=0){
+    power=0;
+    doors.left=false;
+    doors.right=false;
+    lights.left=false;
+    lights.right=false;
+    cameraOpen=false;
+    document.getElementById("camera").classList.remove("show");
+    showMessage("POWER OUT...");
+    updateUI();
+
+    // Power outage leaves you vulnerable.
+    gameTimers.push(setTimeout(()=>{
+      if(running)loseGame({
+        name:"THE DARK",
+        face:"🐻"
+      });
+    },6000));
+    return;
+  }
+  updateUI();
+}
+
+function updateUI(){
+  document.getElementById("power").textContent=
+    "POWER: "+Math.ceil(power)+"%";
+
+  document.getElementById("power").style.color=
+    power<25?"#ff4444":"#77ff9b";
+
+  ["left","right"].forEach(side=>{
+    document.getElementById(side+"Door").classList.toggle(
+      "closed",doors[side]);
+    document.getElementById(side+"Door").classList.toggle(
+      "light",lights[side]&&!doors[side]);
+
+    document.getElementById(side+"Button").classList.toggle(
+      "active",doors[side]);
+
+    document.getElementById(side+"Light").classList.toggle(
+      "active",lights[side]);
+  });
+
+  document.getElementById("camButton").classList.toggle(
+    "active",cameraOpen);
+}
+
+function toggleDoor(side){
+  if(!running||power<=0)return;
+  doors[side]=!doors[side];
+  lights[side]=false;
+  updateUI();
+}
+
+function toggleLight(side){
+  if(!running||power<=0)return;
+  if(cameraOpen)return;
+
+  lights[side]=!lights[side];
+
+  if(lights[side]){
+    let enemy=enemies.find(e=>
+      e.side===side&&e.attack
+    );
+    showMessage(enemy?enemy.name+" IS OUTSIDE!":"HALLWAY CLEAR");
+  }
+
+  updateUI();
+  checkLights();
+}
+
+function checkLights(){
+  if(!running)return;
+
+  ["left","right"].forEach(side=>{
+    if(lights[side]){
+      let enemy=enemies.find(e=>
+        e.side===side&&e.attack
+      );
+      if(enemy){
+        showMessage(enemy.name+" IS OUTSIDE!");
+      }
+    }
+  });
+}
+
+
+function toggleCamera(){
+  if(!running || power <= 0) return;
+
+  cameraOpen = !cameraOpen;
+
+  lights.left = false;
+  lights.right = false;
+
+  // Hide office controls while cameras are open
+  document.querySelector(".controls").style.display =
+    cameraOpen ? "none" : "flex";
+
+  document.getElementById("camera").classList.toggle(
+    "show", cameraOpen
+  );
+
+  updateUI();
+
+  if(cameraOpen) updateCamera();
+}
+
+
+function selectCam(index){
+  if(!running||!cameraOpen)return;
+  currentCam=index;
+  updateCamera();
+}
+
+
+function updateCamera(){
+  if(!cameraOpen)return;
+
+  let room=rooms[currentCam];
+
+  document.getElementById("roomName").textContent=room.name;
+
+  let present=enemies.filter(e=>
+    e.route[e.pos]===currentCam
+  );
+
+  document.getElementById("camCharacters").textContent=
+    present.length
+    ?present.map(e=>e.face).join(" ")
+    :"📺";
+
+  document.getElementById("roomDescription").textContent=
+    present.length
+    ?"MOVEMENT DETECTED: "+
+      present.map(e=>e.name).join(", ")
+    :room.description;
+
+  updateMap();
+}
+
+function updateMap(){
+  // Highlight the currently selected camera
+  document.querySelectorAll(".map-room").forEach(el=>{
+    let cam=Number(el.dataset.cam);
+    el.classList.toggle("selected",cam===currentCam);
+  });
+
+  // Clear all old animatronic markers
+  for(let i=0;i<6;i++){
+    document.getElementById("map"+i).textContent="";
+  }
+
+  // Put each animatronic in its actual current room
+  enemies.forEach(e=>{
+    let room=e.route[e.pos];
+    let marker=document.getElementById("map"+room);
+
+    if(marker){
+      marker.textContent+=e.face+" ";
+    }
+  });
+}
+
+
+function showMessage(msg){
+  const el=document.getElementById("message");
+  el.textContent=msg;
+  clearTimeout(window.messageTimeout);
+  window.messageTimeout=setTimeout(()=>{
+    el.textContent="";
+  },2000);
+}
+
+function loseGame(enemy){
+  if(!running)return;
+  running=false;
+  clearAllTimers();
+
+  document.getElementById("scareFace").textContent=enemy.face;
+  document.getElementById("scare").classList.add("show");
+
+  setTimeout(()=>{
+    document.getElementById("scare").classList.remove("show");
+    document.getElementById("overlay").style.display="flex";
+    document.querySelector("#overlay h1").textContent="GAME OVER";
+    document.querySelector("#overlay p").textContent=
+      enemy.name+" GOT INTO YOUR OFFICE. You survived until "+
+      document.getElementById("clock").textContent+".";
+    document.querySelector("#overlay button").textContent="TRY AGAIN";
+  },1800);
+}
+
+function winGame(){
+  if(!running)return;
+  running=false;
+  clearAllTimers();
+
+  document.getElementById("camera").classList.remove("show");
+  document.getElementById("overlay").style.display="flex";
+  document.querySelector("#overlay h1").textContent="6 AM!";
+  document.querySelector("#overlay h1").style.color="#7dff9a";
+  document.querySelector("#overlay p").textContent=
+    "CONGRATULATIONS! You survived the night. "+
+    "The animatronics have returned to the stage... for now.";
+  document.querySelector("#overlay button").textContent="PLAY AGAIN";
+}
+
+document.addEventListener("keydown",e=>{
+  if(!running)return;
+  if(e.repeat)return;
+
+  switch(e.key.toLowerCase()){
+    case "q":toggleDoor("left");break;
+    case "e":toggleDoor("right");break;
+    case "a":toggleLight("left");break;
+    case "d":toggleLight("right");break;
+    case " ":
+      e.preventDefault();
+      toggleCamera();
+      break;
+    case "1":selectCam(0);break;
+    case "2":selectCam(1);break;
+    case "3":selectCam(2);break;
+    case "4":selectCam(3);break;
+    case "5":selectCam(4);break;
+    case "6":selectCam(5);break;
+  }
+});
+</script>
+</body>
+</html>
