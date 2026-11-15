@@ -463,7 +463,7 @@ function moveEnemies(){
 function updateClock(){
   if(!running)return;
   let elapsed=(Date.now()-startTime)/1000;
-  hour=Math.floor(elapsed/89); // 89s per hour = ~8.5 min night, like the original FNAF
+  hour=Math.floor(elapsed/68); // 89s per hour = ~8.5 min night, like the original FNAF
 
   if(hour>=6){
     winGame();
@@ -484,8 +484,8 @@ function updatePower(){
   if(lights.right)drain+=0.13;
   if(cameraOpen)drain+=0.14;
 
-  //fnaf style power drain, 0.6 (SLIGHT SLOWER THAN FNAF)
-  power-=drain*0.6;
+  //fnaf style power drain,0.7 (SLIGHT SLOWER THAN FNAF)
+  power-=drain*0.7;
 
   if(power<=0){
     power=0;
