@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Five Nights at the Hotel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Limelight&family=Josefin+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0a0d11;--wood:#2a1a14;--brass:#d6ac52;--brass-d:#8a6a2c;--wine:#7a1f2e;--lamp:#ffd48a;--phos:#9ff2b8;--red:#ff4a3d;
+--serif:'Limelight',Georgia,serif;--sans:'Josefin Sans','Trebuchet MS',sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:#f3ead6;font-family:var(--sans);overflow:hidden}
+#game{height:100vh;display:flex;flex-direction:column;position:relative}
+
+/* HUD */
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 22px;background:linear-gradient(#1b1410,#0c0908);border-bottom:3px solid var(--brass-d);box-shadow:0 6px 20px #000a;z-index:5}
+#clock{font:28px var(--serif);color:var(--brass);text-shadow:0 0 12px #d6ac5266}
+#hud small{letter-spacing:.2em;color:#b9a77f}
+.pwr{text-align:right}
+#power{font-size:16px;font-weight:700;letter-spacing:.12em}
+#pbar{height:10px;width:180px;margin:6px 0 0 auto;border:1px solid var(--brass-d);background:#000;padding:1px}
+#pbar i{display:block;height:100%;width:100%;background:repeating-linear-gradient(90deg,#77ff9b 0 10px,transparent 10px 13px);transition:width .5s}
+#game.low #pbar i{background:repeating-linear-gradient(90deg,var(--red) 0 10px,transparent 10px 13px)}
+
+/* OFFICE */
+#office{flex:1;position:relative;overflow:hidden;background:#0d1512}
+#office::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at 50% 45%,transparent 45%,#000c 100%)}
+.wall{position:absolute;inset:0;transition:filter .6s;
+ background:radial-gradient(ellipse 45% 55% at 50% 10%,#ffd48a40,transparent 70%),
+ repeating-linear-gradient(45deg,#d6ac5210 0 2px,transparent 2px 30px),
+ repeating-linear-gradient(-45deg,#d6ac5210 0 2px,transparent 2px 30px),
+ linear-gradient(#0f1f19,#18301f)}
+.wall::before{content:"";position:absolute;top:0;left:50%;width:120px;height:8px;margin-left:-60px;background:var(--lamp);box-shadow:0 0 60px 30px #ffd48a66;animation:flick 7s infinite}
+.wall::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40%;border-top:6px solid var(--brass-d);
+ background:repeating-linear-gradient(90deg,#2b1b14 0 130px,#150b07 130px 134px)}
+#sign{position:absolute;top:7%;left:50%;transform:translateX(-50%);font:26px var(--serif);letter-spacing:.14em;color:#ffb0ba;border:2px solid #ff7a8a;border-radius:6px;padding:4px 16px;
+ text-shadow:0 0 6px #ff4a6a,0 0 18px #ff4a6a;box-shadow:0 0 14px #ff4a6a88,inset 0 0 12px #ff4a6a66;animation:flick 5s infinite 1s}
+#officeText{position:absolute;top:21%;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:.35em;color:#1a1108;background:linear-gradient(var(--brass),var(--brass-d));padding:3px 14px;white-space:nowrap}
+#game.out .wall,#game.out .desk,#game.out .monitor{filter:brightness(.2)}
+
+.door{position:absolute;top:0;bottom:0;width:19%;overflow:hidden;z-index:2;background:#030605}
+#leftDoor{left:0;border-right:6px solid var(--brass-d)}
+#rightDoor{right:0;border-left:6px solid var(--brass-d)}
+.hall{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,#0b1a14,#020504 75%);transition:.2s}
+.hall::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;opacity:.6;background:repeating-linear-gradient(0deg,#3a0f18 0 10px,#2a0a12 10px 20px)}
+.door.light .hall{background:radial-gradient(ellipse at 50% 55%,#ffe6b0,#b8873f 55%,#40290f)}
+.door.light .hall::after{opacity:1;background:repeating-linear-gradient(0deg,#8a2a36 0 10px,#6d1f2b 10px 20px)}
+.who{position:absolute;bottom:10%;left:0;right:0;height:46%;display:flex;justify-content:center}
+.who svg{height:100%;animation:pop .3s ease-out;filter:drop-shadow(0 0 12px #000)}
+.slab{position:absolute;inset:0;transform:translateY(-104%);transition:transform .22s cubic-bezier(.3,.8,.3,1);
+ background:linear-gradient(90deg,#1d110b,#4a2c1c 45%,#2a1810);box-shadow:inset 0 0 0 6px #2a1810,inset 0 0 0 8px #d6ac5255,0 8px 30px #000}
+.slab::before,.slab::after{content:"";position:absolute;left:18%;right:18%;border:2px solid #0007;box-shadow:inset 0 0 14px #0008,0 1px 0 #d6ac5233}
+.slab::before{top:28%;height:22%}.slab::after{top:56%;height:26%}
+.slab b{position:absolute;top:10%;left:50%;transform:translateX(-50%);font:18px var(--serif);color:#1a1108;background:linear-gradient(var(--brass),var(--brass-d));padding:1px 10px;z-index:1}
+.door.closed .slab{transform:none}
+.door span{position:absolute;bottom:10px;left:0;right:0;text-align:center;z-index:2;font-size:12px;font-weight:700;letter-spacing:.3em;color:#7e7358}
+.door.closed span{color:var(--red)}
+
+.monitor{position:absolute;bottom:22%;left:50%;transform:translateX(-50%);width:190px;height:120px;border:10px solid #3a352f;border-radius:10px;transition:filter .6s;
+ background:radial-gradient(#173a28,#06120c);box-shadow:0 0 30px #9ff2b833,inset 0 0 30px #000;overflow:hidden}
+.monitor::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#0006 0 2px,transparent 2px 4px)}
+.monitor::after{content:"";position:absolute;inset:0;opacity:.3;background:var(--noise);animation:noise .4s steps(4) infinite}
+.desk{position:absolute;bottom:0;left:17.5%;width:65%;height:25%;border-top:6px solid var(--brass-d);transition:filter .6s;
+ background:linear-gradient(#3a2418,#150b07);box-shadow:0 -20px 70px #000,inset 0 4px 0 #d6ac5230}
+.desk::before{content:"";position:absolute;left:10%;top:-24px;width:46px;height:20px;border-radius:46px 46px 0 0;background:linear-gradient(90deg,var(--brass-d),var(--brass),var(--brass-d))}
+.desk::after{content:"";position:absolute;right:10%;top:-36px;width:44px;height:30px;clip-path:polygon(20% 0,80% 0,100% 100%,0 100%);background:var(--brass);filter:drop-shadow(0 0 12px var(--lamp))}
+
+.controls{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 12px;z-index:6}
+button{font:700 14px var(--sans);letter-spacing:.08em;color:#f3ead6;background:linear-gradient(#3b2a1d,#1c120c);border:2px solid var(--brass-d);padding:12px 18px;cursor:pointer;transition:.15s;border-radius:3px;
+ box-shadow:inset 0 1px 0 #d6ac5240,0 3px 0 #000}
+button:hover{border-color:var(--brass);color:#fff}
+button:active{transform:translateY(2px);box-shadow:inset 0 1px 0 #d6ac5240,0 1px 0 #000}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+button.active{background:linear-gradient(#a8302f,#5c1519);border-color:#ff6b5e;box-shadow:0 0 16px #ff4a3d66,inset 0 1px 0 #fff3}
+button:disabled{opacity:.3;cursor:not-allowed}
+
+#message{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:8;pointer-events:none;max-width:92%;text-align:center;
+ font-weight:700;font-size:15px;letter-spacing:.12em;color:#ffd9d4;text-shadow:0 0 14px var(--red)}
+#message:not(:empty){background:#2a0709e6;border:1px solid var(--red);padding:8px 18px}
+
+/* CAMERAS */
+#camera{display:none;position:absolute;inset:0;z-index:4;padding:18px 22px;background:#040705;color:var(--phos);font-family:'Courier New',monospace}
+#camera.show{display:block}
+#camTitle{font-size:20px;font-weight:700;letter-spacing:.08em;text-shadow:0 0 10px #9ff2b866}
+#camRoom{position:relative;overflow:hidden;height:65%;margin:12px auto;border:3px solid #2f4a3c;background:#0b130f;box-shadow:inset 0 0 90px #000,0 0 30px #9ff2b81a}
+#camScene,#camCharacters{position:absolute;filter:grayscale(1) sepia(1) hue-rotate(78deg) saturate(2.4) brightness(.95) contrast(1.15)}
+#camScene{inset:0;z-index:1}
+#camScene svg{width:100%;height:100%;display:block}
+#camCharacters{left:0;right:0;bottom:0;height:72%;z-index:2;display:flex;justify-content:center;align-items:flex-end;gap:2%}
+#camCharacters svg{height:100%;max-width:200px;animation:pop .3s ease-out}
+#camRoom::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:repeating-linear-gradient(0deg,#0005 0 1px,transparent 1px 4px)}
+#camRoom::after{content:"";position:absolute;inset:-40px;z-index:4;pointer-events:none;opacity:.22;mix-blend-mode:overlay;background:var(--noise);animation:noise .5s steps(5) infinite}
+#camRoom.glitch #camScene{animation:glitch .25s steps(5)}
+#roomName{position:absolute;top:10px;left:14px;margin:0;z-index:5;font-size:22px;letter-spacing:.1em;text-shadow:0 0 8px #000}
+#roomName::after{content:" \25CF REC";font-size:13px;color:var(--red);animation:blink 1s steps(2) infinite}
+#roomDescription{position:absolute;bottom:10px;left:14px;margin:0;z-index:5;max-width:70%;font-size:14px;background:#000b;padding:4px 10px}
+#camButtons{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+#camButtons button{padding:10px 13px;font-family:'Courier New',monospace;background:#0b130f;border-color:#2f4a3c;color:var(--phos);box-shadow:none}
+#camButtons button.active{background:#1f4a31;border-color:var(--phos);box-shadow:0 0 12px #9ff2b855}
+#camera>button{display:block;margin:0 auto;font-family:'Courier New',monospace}
+
+#camMap{position:absolute;right:15px;top:85px;width:280px;z-index:5;background:#050a07ee;border:2px solid #4c7a5f;padding:10px;box-shadow:0 0 20px #000}
+#camMap h3{text-align:center;font-size:13px;letter-spacing:.15em;margin:2px 0 10px}
+.floorplan{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:85px 45px 85px 65px;gap:4px}
+.map-room{background:#0f1c15;border:2px solid #2f4a3c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:9px;cursor:pointer;padding:3px;transition:.15s}
+.map-room:hover{border-color:#6fae8a}
+.map-room b{font-size:11px}
+.map-room span{color:#9bb5a4;margin-top:3px}
+.map-room.selected{background:#1f4a31;border-color:#adffb9;box-shadow:0 0 12px #55ff8877}
+.map-enemies{display:flex;justify-content:center;gap:1px;min-height:28px;margin-top:2px}
+.map-enemies svg{height:26px}
+.map-corridor{grid-column:1/4;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(90deg,#0a100c 0 8px,#101a14 8px 16px);border:1px dashed #4c7a5f;color:#8aa896;font-size:10px;letter-spacing:.3em}
+.map-office{grid-column:2;background:#2a2314;border:2px solid var(--brass);display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:10px;color:#f3ead6;text-align:center}
+.map-office b{color:var(--brass)}
+
+/* SCARE + TITLE */
+#scare{display:none;position:absolute;inset:0;z-index:9;overflow:hidden;background:#000;box-shadow:inset 0 0 240px 90px #000;align-items:center;justify-content:center;flex-direction:column;animation:shake .05s steps(2) .35s infinite,strobe .1s steps(2) .35s infinite}
+#scare.show{display:flex}
+#scare::before{content:"";position:absolute;inset:0;z-index:5;background:#fff;opacity:0;pointer-events:none;animation:flash .5s steps(5) .35s forwards}
+#scare::after{content:"";position:absolute;inset:-40px;z-index:4;pointer-events:none;opacity:0;background:var(--noise);animation:noise .15s steps(3) infinite,nzon .01s linear .35s forwards}
+#scarePre{position:absolute;left:50%;top:46%;width:min(46vw,380px);height:70px;transform:translate(-50%,-50%);z-index:2;opacity:0;animation:pre .34s steps(1) forwards;
+ background:radial-gradient(circle at 22% 50%,#ff5a3c 0 7px,#ff3b2b55 9px,transparent 34px),radial-gradient(circle at 78% 50%,#ff5a3c 0 7px,#ff3b2b55 9px,transparent 34px)}
+#scareFace{position:relative;z-index:2;height:min(64vh,560px);aspect-ratio:5/6;opacity:0;animation:lunge .6s linear .35s both,twitch .07s steps(2) .95s infinite}
+#scareFace>div{position:absolute;inset:0}
+#scareFace svg{width:100%;height:100%;display:block}
+#scareFace .mn svg{filter:drop-shadow(0 0 60px #f00) contrast(1.6) brightness(1.1)}
+#scareFace .gh{mix-blend-mode:screen;opacity:.85}
+#scareFace .r{filter:grayscale(1) sepia(1) hue-rotate(-40deg) saturate(8);animation:splitr .08s steps(2) infinite}
+#scareFace .c{filter:grayscale(1) sepia(1) hue-rotate(150deg) saturate(8);animation:splitc .08s steps(2) infinite}
+#scareFace .s1{clip-path:inset(22% 0 58% 0);animation:sl1 .09s steps(2) infinite}
+#scareFace .s2{clip-path:inset(62% 0 18% 0);animation:sl2 .11s steps(2) infinite}
+#scare h1{position:relative;z-index:6;margin:14px 0 0;font:clamp(28px,5vw,52px) var(--serif);color:var(--red);text-shadow:0 0 20px #f00,0 0 4px #000;opacity:0}
+#scare.dead{animation:none}
+#scare.dead #scareFace{animation:none;opacity:1;transform:scale(1.75);filter:contrast(1.6) brightness(.55)}
+#scare.dead .gh,#scare.dead .s1,#scare.dead .s2{animation:none}
+#scare.dead::after{animation:noise .1s steps(3) infinite;opacity:.85}
+#scare.dead h1{opacity:1;animation:jit .1s steps(2) infinite}
+#muteBtn{padding:6px 12px;font-size:11px}
+#overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px;overflow:auto;
+ background:#040605}
+#overlay>*{position:relative}
+#overlay>#lobby{position:absolute;inset:0;z-index:0;overflow:hidden}
+#lobby svg{width:100%;height:100%;display:block;filter:brightness(.9) contrast(1.1)}
+#lobby::before{content:"";position:absolute;inset:-20%;z-index:1;opacity:.5;pointer-events:none;background:radial-gradient(ellipse 40% 12% at 20% 80%,#9fb8c855,transparent),radial-gradient(ellipse 45% 14% at 75% 70%,#9fb8c844,transparent);animation:fog 22s ease-in-out infinite alternate}
+#lobby::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse 55% 50% at 50% 48%,#000c,#0008 55%,#000e 100%)}
+.beam{animation:flick 6s infinite 2s}
+@keyframes fog{from{transform:translateX(-6%)}to{transform:translateX(6%)}}
+#overlay h1{margin:0 0 10px;font:clamp(34px,7vw,76px)/1.05 var(--serif);color:#e8c46e;text-shadow:0 0 28px #d6ac5266,0 4px 0 #3a2a0c}
+#overlay p{max-width:540px;line-height:1.7;font-size:17px;color:#d9cfb6;margin:0 0 6px;padding:14px 4px;border-top:1px solid var(--brass-d);border-bottom:1px solid var(--brass-d)}
+.note{color:#8a8068;font-size:13px;margin:8px 0 20px;max-width:500px}
+#overlay button{font-size:18px;padding:16px 34px;color:#1a1108;background:linear-gradient(var(--brass),var(--brass-d));border-color:#f7dc9a;letter-spacing:.18em}
+#overlay button:hover{color:#000;filter:brightness(1.12)}
+
+@keyframes flick{0%,46%,56%,100%{opacity:1}48%{opacity:.5}50%{opacity:.9}52%{opacity:.35}54%{opacity:.8}}
+@keyframes shake{0%{transform:translate(22px,12px) rotate(1.6deg)}50%{transform:translate(-20px,-14px) rotate(-1.6deg)}100%{transform:translate(12px,-18px) rotate(1deg)}}
+@keyframes strobe{0%{background-color:#000}50%{background-color:#4a0000}}
+@keyframes lunge{0%{opacity:0;transform:scale(.05) translateY(80px)}
+ 6%{opacity:1;transform:scale(.5) translateY(20px);animation-timing-function:steps(1)}
+ 22%{transform:scale(.38) translate(-40px,10px) rotate(-4deg);animation-timing-function:steps(1)}
+ 34%{transform:scale(2.1) rotate(3deg);animation-timing-function:steps(1)}
+ 52%{transform:scale(1.55) translate(30px,-20px) rotate(-3deg);animation-timing-function:steps(1)}
+ 70%{transform:scale(2) translate(-20px,10px);animation-timing-function:steps(1)}
+ 100%{transform:scale(1.75)}}
+@keyframes twitch{0%{transform:scale(1.75)}100%{transform:scale(1.88) translate(8px,-5px) rotate(1deg)}}
+@keyframes splitr{0%{transform:translate(-34px,0)}100%{transform:translate(22px,6px)}}
+@keyframes splitc{0%{transform:translate(34px,0)}100%{transform:translate(-22px,-6px)}}
+@keyframes sl1{0%{transform:translateX(-60px)}100%{transform:translateX(50px)}}
+@keyframes sl2{0%{transform:translateX(70px)}100%{transform:translateX(-45px)}}
+@keyframes pre{0%{opacity:0}30%{opacity:1}55%{opacity:0}75%{opacity:1}100%{opacity:0}}
+@keyframes nzon{to{opacity:.5}}
+@keyframes jit{0%{transform:translate(0)}100%{transform:translate(5px,-3px)}}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes blink{50%{opacity:0}}
+@keyframes noise{0%{background-position:0 0}25%{background-position:-40px 30px}50%{background-position:30px -50px}75%{background-position:-60px -20px}100%{background-position:20px 40px}}
+@keyframes glitch{0%{transform:translateX(-14px);filter:brightness(2) grayscale(1)}40%{transform:translateX(10px)}100%{transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}#scare::before{display:none}}
+
+@media(max-width:700px){
+ body,#game{height:100dvh}
+ #hud{padding:8px 12px}#clock{font-size:20px}#pbar{width:110px}
+ #sign{font-size:16px}#officeText{font-size:10px;top:19%}
+ .door{width:15%}.slab b{font-size:12px;padding:1px 5px}.door span{font-size:10px;letter-spacing:.1em}
+ .monitor{width:120px;height:76px;border-width:6px}
+ .controls{gap:6px;bottom:8px}
+ .controls button{flex:1 1 30%;min-height:46px;padding:8px 4px;font-size:11px;touch-action:manipulation}
+ #camera{padding:8px;overflow-y:auto}
+ #camRoom{height:38%;min-height:150px;margin:10px 0}
+ #roomName{font-size:16px}#roomDescription{font-size:11px}
+ #camMap{position:relative;top:auto;right:auto;width:100%;max-width:280px;margin:10px auto}
+ #camButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+ #camButtons button{padding:12px 3px;font-size:11px;min-height:44px}
+ #message{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+
+<div id="hud">
+  <div>
+    <div id="clock">12 AM</div>
+    <small>NIGHT 1</small>
+  </div>
+  <button id="muteBtn" data-m="0" onclick="toggleMute();this.blur()">SOUND: ON</button>
+  <div class="pwr">
+    <div id="power">POWER: 100%</div>
+    <div id="pbar"><i></i></div>
+  </div>
+</div>
+
+<div id="office">
+  <div class="wall"></div>
+  <div id="sign">VACANCY</div>
+  <div id="officeText">SECURITY OFFICE</div>
+
+  <div class="door" id="leftDoor"><div class="hall"></div><div class="who" id="leftWho"></div><div class="slab"><b>101</b></div><span>LEFT</span></div>
+  <div class="door" id="rightDoor"><div class="hall"></div><div class="who" id="rightWho"></div><div class="slab"><b>102</b></div><span>RIGHT</span></div>
+
+  <div class="monitor"></div>
+  <div class="desk"></div>
+
+  <div class="controls">
+    <button id="leftLight" onclick="toggleLight('left')">LEFT LIGHT</button>
+    <button id="leftButton" onclick="toggleDoor('left')">LEFT DOOR</button>
+    <button id="camButton" onclick="toggleCamera()">OPEN CAMERAS</button>
+    <button id="rightButton" onclick="toggleDoor('right')">RIGHT DOOR</button>
+    <button id="rightLight" onclick="toggleLight('right')">RIGHT LIGHT</button>
+  </div>
+
+  <div id="camera">
+    <div id="camTitle">CAMERAS ACTIVE // SIGNAL OK</div>
+    <div id="camRoom">
+      <div id="camScene"></div>
+      <div id="camCharacters"></div>
+      <h2 id="roomName">SHOW STAGE</h2>
+      <p id="roomDescription">The stage is quiet...</p>
+    </div>
+    <div id="camButtons">
+      <button onclick="selectCam(0)">CAM 01</button>
+      <button onclick="selectCam(1)">CAM 02</button>
+      <button onclick="selectCam(2)">CAM 03</button>
+      <button onclick="selectCam(3)">CAM 04</button>
+      <button onclick="selectCam(4)">CAM 05</button>
+      <button onclick="selectCam(5)">CAM 06</button>
+    </div>
+
+    <button onclick="toggleCamera()">CLOSE CAMERAS</button>
+
+    <div id="camMap">
+      <h3>HOTEL FLOOR PLAN</h3>
+      <div class="floorplan">
+        <div class="map-room" data-cam="5" onclick="selectCam(5)"><b>CAM 06</b><span>BACK ROOM</span><div class="map-enemies" id="map5"></div></div>
+        <div class="map-room" data-cam="0" onclick="selectCam(0)"><b>CAM 01</b><span>SHOW STAGE</span><div class="map-enemies" id="map0"></div></div>
+        <div class="map-room" data-cam="1" onclick="selectCam(1)"><b>CAM 02</b><span>DINING</span><div class="map-enemies" id="map1"></div></div>
+        <div class="map-room" data-cam="2" onclick="selectCam(2)"><b>CAM 03</b><span>STORAGE</span><div class="map-enemies" id="map2"></div></div>
+        <div class="map-corridor">MAIN CORRIDOR</div>
+        <div class="map-room" data-cam="3" onclick="selectCam(3)"><b>CAM 04</b><span>WEST HALL</span><div class="map-enemies" id="map3"></div></div>
+        <div class="map-room" data-cam="4" onclick="selectCam(4)"><b>CAM 05</b><span>EAST HALL</span><div class="map-enemies" id="map4"></div></div>
+        <div class="map-office"><b>YOU</b><span>SECURITY OFFICE</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="message"></div>
+</div>
+
+<div id="scare">
+  <div id="scarePre"></div>
+  <div id="scareFace"></div>
+  <h1>YOU GOT CAUGHT</h1>
+</div>
+
+<div id="overlay">
+<div id="lobby"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="bm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb8c8" stop-opacity=".4"/><stop offset="1" stop-color="#9fb8c8" stop-opacity="0"/></linearGradient>
+<pattern id="wp" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="#18261f"/></pattern>
+<pattern id="pg" width="20" height="14" patternUnits="userSpaceOnUse"><rect x="2" y="2" width="16" height="10" fill="#060807"/></pattern>
+</defs>
+<rect width="800" height="500" fill="#0b100e"/><rect width="800" height="340" fill="url(#wp)"/>
+<path d="M120 0h70l-12 90-30 40-28-60zM590 30h90l-10 70-60 30zM20 150l50 10-10 60-40-20z" fill="#060908"/>
+<rect y="262" width="800" height="90" fill="#140d09"/><rect y="256" width="800" height="7" fill="#2a2010"/>
+<path d="M0 262v90M60 262v90M120 262v90M180 262v90M240 262v90M560 262v90M620 262v90M680 262v90M740 262v90" stroke="#0a0604" stroke-width="3"/>
+<rect y="340" width="800" height="160" fill="#080a09"/>
+<g stroke="#141b17" stroke-width="2"><path d="M400 340L-200 500M400 340L0 500M400 340L200 500M400 340L400 500M400 340L600 500M400 340L800 500M400 340L1000 500M0 362H800M0 388H800M0 424H800M0 470H800"/></g>
+<path d="M250 380l70-6 120 4 90 6-10 40-80 14-120-4-60-20z" fill="#2a0e12" opacity=".7"/>
+<ellipse cx="640" cy="430" rx="70" ry="12" fill="#101c22"/>
+<g class="beam"><path d="M70 70H180L340 460H100z" fill="url(#bm)"/><path d="M620 70H730L720 460H470z" fill="url(#bm)"/></g>
+<g><rect x="70" y="60" width="110" height="190" fill="#25363f"/><path d="M125 60V250M70 155H180" stroke="#0a0f0d" stroke-width="6"/><rect x="58" y="112" width="134" height="16" transform="rotate(-7 125 120)" fill="#2a1d12"/><rect x="58" y="190" width="134" height="16" transform="rotate(5 125 198)" fill="#23180f"/>
+<rect x="620" y="60" width="110" height="190" fill="#25363f"/><path d="M675 60V250M620 155H730" stroke="#0a0f0d" stroke-width="6"/><rect x="608" y="95" width="134" height="16" transform="rotate(6 675 103)" fill="#2a1d12"/><rect x="608" y="175" width="134" height="16" transform="rotate(-5 675 183)" fill="#23180f"/></g>
+<g fill="#0e1411"><rect x="236" y="0" width="38" height="352"/><rect x="526" y="0" width="38" height="352"/></g>
+<path d="M250 40l10 50-8 40 12 60M545 100l-10 60 8 50M536 0l8 30" stroke="#050706" stroke-width="2" fill="none"/>
+<rect x="340" y="196" width="120" height="76" fill="#120c08"/><rect x="346" y="202" width="108" height="64" fill="url(#pg)"/>
+<g transform="rotate(-4 400 175)"><rect x="338" y="160" width="124" height="28" fill="#1a120a" stroke="#3a2c14"/><text x="400" y="180" text-anchor="middle" fill="#6b5a2c" font-size="14" font-family="Georgia,serif" letter-spacing="3">RECEPTION</text></g>
+<path d="M300 296h200v56H300z" fill="#1b110b"/><path d="M296 290h208v8H296z" fill="#3a2a14"/><path d="M320 306h160v36H320z" fill="none" stroke="#0a0604" stroke-width="3"/><path d="M360 296l14 56" stroke="#050302" stroke-width="2"/>
+<path d="M440 288a14 14 0 0128 0z" fill="#5a4a22"/><rect x="440" y="288" width="28" height="3" fill="#3a2e14"/>
+<g transform="rotate(7 400 0)"><path d="M400 0V66" stroke="#3a3a36" stroke-width="3"/><ellipse cx="400" cy="76" rx="62" ry="10" fill="none" stroke="#4a4332" stroke-width="4"/><path d="M400 66L350 80M400 66L450 80M400 66L400 80" stroke="#4a4332" stroke-width="2"/><g fill="#8aa0aa" opacity=".6"><path d="M346 86l4 20 4-20zM372 88l4 26 4-26zM420 88l4 18 4-18zM446 86l4 22 4-22z"/></g><path d="M385 86l-6 40" stroke="#3a3a36" stroke-width="1"/></g>
+<g transform="rotate(32 590 336)"><rect x="574" y="300" width="34" height="36" fill="#150e0a"/><rect x="574" y="276" width="34" height="26" fill="#1c1410"/><path d="M576 336v30M606 336v30" stroke="#150e0a" stroke-width="4"/></g>
+<g fill="#0a0e0c"><path d="M150 460l30-8 20 14-24 10zM520 450l24-6 10 12-20 8zM680 470l20-6 14 10-16 8z"/></g>
+<g fill="none" stroke="#6a7a72" stroke-width="1" opacity=".55"><path d="M0 0Q60 24 130 0M0 0Q24 60 0 130M0 0L96 96M0 0L110 42M0 0L42 110M0 40Q40 40 60 60M40 0Q40 40 60 60"/><g transform="matrix(-1 0 0 1 800 0)"><path d="M0 0Q60 24 130 0M0 0Q24 60 0 130M0 0L96 96M0 0L110 42M0 0L42 110M0 40Q40 40 60 60M40 0Q40 40 60 60"/></g><path d="M236 0Q250 30 274 16M236 8Q262 34 274 36M526 0Q550 30 564 16"/></g>
+</svg></div>
+  <h1>FIVE NIGHTS<br>AT THE HOTEL</h1>
+  <p>
+    So, you just got hired by a hotel as the night guard.<br>
+    This building looks scary with different animatronics...
+    watch cams, close doors and remember...
+    the ANIMATRONICS GET QUIRKY AT NIGHT
+  </p>
+  <div class="note">UPDATE 1.7:changed animatronics looks to be more scarier also made jumpscare more scarier</div>
+  <button onclick="startGame()">START NIGHT</button>
+</div>
+</div>
+
+<script>
+document.documentElement.style.setProperty("--noise",
+ "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")");
+
+/* ---------- ART: animatronic sprites + camera scenes ---------- */
+const PAL={
+  bear:{b:"#6b4a1f",l:"#b89a52",a:"#5a0f14",e:"#ffd23a"},
+  bunny:{b:"#8c8a45",l:"#c9c58a",a:"#4a1212",e:"#ff3b2b"},
+  fox:{b:"#7a3a16",l:"#c8c2a0",a:"#1a2e44",e:"#d8ff3a"}
+};
+const eyes=(c,y,d,r=6)=>[50-d,50+d].map(x=>
+  `<circle cx="${x}" cy="${y}" r="${r+4}" fill="${c}" opacity=".22"/><circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/><circle cx="${x}" cy="${y}" r="${r/3}" fill="#120804"/>`).join("");
+const mouth=(s,y)=>s
+  ?`<g transform="translate(0 ${y/2})"><path d="M28 76Q50 116 72 76Z" fill="#14040a"/><path d="M30 77l5 10 5-10 5 10 5-10 5 10 5-10 5 10 5-10z" fill="#fff"/><path d="M36 102l5-9 5 9 4-9 4 9 5-9 5 9z" fill="#fff" opacity=".9"/></g>`
+  :`<g transform="translate(0 ${y})"><path d="M40 76Q50 84 60 76" stroke="#14040a" stroke-width="3" fill="none" stroke-linecap="round"/></g>`;
+const body=p=>`<path d="M6 120Q8 86 50 84Q92 86 94 120Z" fill="${p.b}"/>`;
+const bow=(p,y)=>`<path d="M50 ${y}L36 ${y-7}v14zM50 ${y}L64 ${y-7}v14z" fill="${p.a}"/><circle cx="50" cy="${y}" r="4" fill="#4a1019"/>`;
+const ART={
+  bear:(p,s)=>body(p)+
+   `<path d="M26 100Q50 90 74 100L70 120H30Z" fill="#0b0705"/><path d="M32 104Q50 98 68 104M31 111Q50 105 69 111M31 118Q50 112 69 118M50 99V120" stroke="#b9b08a" stroke-width="2.4" fill="none"/><path d="M30 94q-6 14 2 24M72 96q6 10 0 22" stroke="#c22" stroke-width="1.6" fill="none"/><path d="M38 96l-3 22" stroke="#e8c84a" stroke-width="1.2"/><path d="M8 112l10-6M92 110l-9-8" stroke="#2a0a08" stroke-width="3"/>
+    <path d="M8 40Q4 18 24 16L34 30L22 50Z" fill="${p.b}"/><path d="M12 30Q14 22 22 22L26 32 16 38Z" fill="#240d08"/>
+    <path d="M68 38Q66 16 84 16L90 24 96 22 94 36 90 46Q76 50 68 38Z" fill="${p.b}"/><path d="M76 38Q76 26 84 26L86 34 82 44Z" fill="#240d08"/>
+    <path d="M16 56Q16 20 50 20Q84 20 84 56Q84 90 50 94Q16 90 16 56Z" fill="${p.b}"/>
+    <path d="M56 24Q82 26 83 56L70 60L64 40Z" fill="#8f958c"/><path d="M62 34l12 4M66 44l12 2" stroke="#555" stroke-width="1.6"/>
+    <path d="M24 36l10 18M30 32l-4 12M20 60l12 6M24 44l4-2M26 50l4-2M28 56l4-2" stroke="#1a0c06" stroke-width="1.8" fill="none"/>
+    <g transform="rotate(-10 40 22)"><path d="M26 26L30 6H64L66 26Z" fill="${p.a}"/><rect x="26" y="20" width="40" height="5" fill="#8a6a2c"/><path d="M44 10l8 4-6 6z" fill="#240d08"/></g>
+    <ellipse cx="36" cy="46" rx="12" ry="11" fill="#050202"/><ellipse cx="64" cy="48" rx="9" ry="8" fill="#050202"/>
+    <circle cx="36" cy="46" r="10" fill="${p.e}" opacity=".25"/><circle cx="36" cy="46" r="4.2" fill="${p.e}"/><circle cx="36" cy="46" r="1.4" fill="#120804"/><circle cx="64" cy="48" r="2" fill="#b33"/>
+    <ellipse cx="50" cy="70" rx="18" ry="13" fill="${p.l}"/><path d="M40 66l10 4-4 8z" fill="#2a0a08"/><path d="M44 62h12l-6 7z" fill="#1a0c06"/>
+    <path d="M64 52Q66 66 62 74" stroke="#c22" stroke-width="1.5" fill="none"/><circle cx="62" cy="76" r="4.5" fill="#e8e0c8"/><circle cx="62" cy="76" r="1.8" fill="#222"/>`
+   +(s?`<path d="M20 78Q50 130 80 78Z" fill="#0a0303"/><path d="M22 78L26 88 29 80 33 91 36 81 40 93 44 83 48 95 52 83 56 95 60 83 64 93 67 81 71 91 74 80 78 88 80 78Z" fill="#e0d9a4"/><path d="M32 104L36 96 40 104 44 95 48 104 52 95 56 104 60 95 64 104 68 96 72 104Z" fill="#e0d9a4"/>`
+    :`<path d="M20 78Q50 106 80 78Z" fill="#0a0303"/><path d="M22 78L26 88 29 80 33 91 36 81 40 93 44 83 48 95 52 83 56 95 60 83 64 93 67 81 71 91 74 80 78 88 80 78Z" fill="#d8d29a"/>`)+
+   `<path d="M30 90l-2 14M70 88l3 12" stroke="#6a0c10" stroke-width="3" opacity=".7"/>`,
+  bunny:(p,s)=>body(p)+
+   `<path d="M32 98Q50 90 68 98L64 120H36Z" fill="#0b0705"/><path d="M37 103Q50 98 63 103M36 110Q50 105 64 110M36 117Q50 112 64 117M50 99V120" stroke="#bdb78a" stroke-width="2.2" fill="none"/><path d="M33 94q-5 12 2 22M69 95q6 10 0 21" stroke="#d22" stroke-width="1.6" fill="none"/><path d="M36 96q-4 10 0 18" stroke="#39c" stroke-width="1.2" fill="none"/>
+    <path d="M24 56L20 10L28 3L33 15L40 5L44 52Z" fill="${p.b}"/><path d="M28 50L27 17L33 23L37 50Z" fill="#240d08"/><path d="M31 20l5 12-3 4" stroke="#aaa" stroke-width="1" fill="none"/>
+    <path d="M58 50L64 18L88 28L84 36L74 31L70 54Z" fill="${p.b}"/><path d="M82 34l8 9M80 38l4 10" stroke="#d22" stroke-width="1.4" fill="none"/>
+    <path d="M20 60Q18 30 50 29Q82 30 80 60L76 88Q50 106 24 88Z" fill="${p.b}"/>
+    <path d="M58 33Q78 35 79 56L68 54Q64 42 58 33Z" fill="#8f958c"/><path d="M62 40l8 2M64 46l8 1" stroke="#555" stroke-width="1.5"/>
+    <path d="M26 40l9 16M31 38l-3 12M70 70l8 6" stroke="#1a0c06" stroke-width="1.6" fill="none"/>
+    <ellipse cx="35" cy="57" rx="11" ry="10" fill="#050202"/><ellipse cx="66" cy="57" rx="9" ry="8" fill="#050202"/>`
+   +eyes(p.e,57,15,3.2)+
+   `<path d="M46 70h8l-4 8z" fill="#1a0505"/><path d="M8 68l20 4M92 68l-20 4" stroke="#222" stroke-width="1.2"/>`
+   +(s?`<path d="M26 80Q50 116 74 80Z" fill="#0a0303"/><path d="M28 81L32 93 36 83 40 95 44 84 48 97 52 84 56 97 60 84 64 95 68 83 72 93 74 82Z" fill="#e0d9a4"/><path d="M36 98L40 91 44 100 48 93 52 102 56 93 60 100 64 91 68 98Z" fill="#e0d9a4"/>`
+    :`<path d="M27 81Q50 102 73 81Z" fill="#0a0303"/><path d="M29 82L33 92 36 84 40 94 44 85 48 96 52 85 56 96 60 85 64 94 67 84 71 92 72 82Z" fill="#d8d29a"/>`)+
+   bow(p,98),
+  fox:(p,s)=>body(p)+
+   `<path d="M30 108Q50 104 70 108L67 120H33Z" fill="#0b0705"/><path d="M36 112Q50 108 64 112M36 117Q50 113 64 117M50 108V120" stroke="#bdb78a" stroke-width="2" fill="none"/><path d="M32 106q-4 8 1 14M69 107q4 7 0 13" stroke="#d22" stroke-width="1.5" fill="none"/>
+    <path d="M12 2L44 32L14 50Z" fill="${p.b}"/><path d="M20 14L34 32L18 42Z" fill="#1a0806"/><path d="M24 12l4 12-8-2z" fill="#0b0705"/>
+    <path d="M88 10L58 32L86 50Z" fill="${p.b}"/><path d="M82 8l-6 10 8 4z" fill="#0b0705"/><path d="M80 20L66 32L82 42Z" fill="#1a0806"/>
+    <path d="M12 44Q50 24 88 44L78 82Q70 100 50 108Q30 100 22 82Z" fill="${p.b}"/>
+    <path d="M14 46Q26 56 30 74L22 82Q16 66 14 46Z" fill="#cfc9a8"/><path d="M18 56l6 2M20 64l6 2" stroke="#6a6448" stroke-width="1.6"/>
+    <path d="M70 40Q86 44 87 56L74 60Z" fill="#8f958c"/><circle cx="76" cy="48" r="1.5" fill="#444"/><circle cx="82" cy="52" r="1.5" fill="#444"/>
+    <path d="M28 66Q50 78 72 66L68 86Q50 104 32 86Z" fill="${p.l}"/>
+    <path d="M22 50L44 56L40 68L22 62Z" fill="#050202"/><path d="M78 50L56 56L60 68L78 62Z" fill="#050202"/>
+    <ellipse cx="33" cy="60" rx="10" ry="6" fill="${p.e}" opacity=".25"/><ellipse cx="67" cy="60" rx="10" ry="6" fill="${p.e}" opacity=".25"/>
+    <path d="M28 56L40 60L38 64L28 61Z" fill="${p.e}"/><path d="M72 56L60 60L62 64L72 61Z" fill="${p.e}"/>
+    <path d="M18 70l20 6M20 76l18 6" stroke="#2a0a08" stroke-width="1.6" fill="none"/>
+    <path d="M45 76h10l-5 7z" fill="#1a0505"/>`
+   +(s?`<path d="M26 90Q50 132 74 90Z" fill="#0a0303"/><path d="M26 90L29 103 33 92 37 106 41 93 45 100 50 93 55 100 59 93 63 106 67 92 71 103 74 90Z" fill="#e0d9a4"/><path d="M34 111L38 103 42 111 46 102 50 111 54 102 58 111 62 103 66 111Z" fill="#e0d9a4"/>`
+    :`<path d="M26 90Q50 106 74 90Z" fill="#0a0303"/><path d="M26 90L29 103 33 92 37 106 41 93 45 100 50 93 55 100 59 93 63 106 67 92 71 103 74 90Z" fill="#d8d29a"/>`)
+};
+function sprite(k,s){
+  const p=s?{...(PAL[k]||PAL.bear),e:"#fffbe0"}:(PAL[k]||PAL.bear);
+  return `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">${ART[k||"bear"](p,s)}</svg>`;
+}
+
+const hall=f=>`<g ${f?'transform="matrix(-1 0 0 1 400 0)"':''}>
+ <rect width="400" height="240" fill="#1b1b1b"/><path d="M0 0L150 80V160L0 240Z" fill="#303030"/><path d="M400 0L250 80V160L400 240Z" fill="#262626"/>
+ <path d="M0 240L150 160H250L400 240Z" fill="#161616"/><path d="M0 0L150 80H250L400 0Z" fill="#202020"/><rect x="150" y="80" width="100" height="80" fill="#0a0a0a"/>
+ <path d="M30 60L90 95V190L30 215Z" fill="#454545"/><path d="M105 103L130 117V160L105 172Z" fill="#3c3c3c"/>
+ <ellipse cx="200" cy="12" rx="40" ry="5" fill="#fff" opacity=".35"/><ellipse cx="200" cy="48" rx="24" ry="4" fill="#fff" opacity=".3"/><ellipse cx="200" cy="84" rx="14" ry="3" fill="#fff" opacity=".25"/></g>`;
+const shelf=(x,w)=>`<path d="M${x} 40v150M${x+w} 40v150M${x} 80h${w}M${x} 120h${w}M${x} 160h${w}" stroke="#585858" stroke-width="6"/>`;
+const SC=[
+ `<rect width="400" height="240" fill="#2a2a2a"/><rect y="175" width="400" height="65" fill="#1a1a1a"/><path d="M0 0h90q-10 90-40 190H0zM400 0h-90q10 90 40 190h50z" fill="#4c4c4c"/>
+  <rect x="60" y="150" width="280" height="40" fill="#5a5a5a"/><path d="M150 0L120 150h60zM250 0L220 150h60z" fill="#fff" opacity=".1"/>
+  <text x="200" y="52" text-anchor="middle" fill="#cfcfcf" font-size="22" font-family="Georgia,serif">★ GRAND HOTEL ★</text><rect x="196" y="110" width="8" height="40" fill="#777"/>`,
+ `<rect width="400" height="240" fill="#2b2b2b"/><rect y="150" width="400" height="90" fill="#191919"/><rect x="40" y="30" width="80" height="90" fill="#657080"/><path d="M80 30v90M40 75h80" stroke="#222" stroke-width="5"/>
+  <rect x="280" y="30" width="80" height="90" fill="#657080"/><path d="M320 30v90M280 75h80" stroke="#222" stroke-width="5"/>
+  <g fill="#555"><ellipse cx="90" cy="195" rx="52" ry="13"/><ellipse cx="300" cy="190" rx="52" ry="13"/><ellipse cx="200" cy="215" rx="58" ry="14"/></g>
+  <g fill="#3c3c3c"><rect x="86" y="196" width="8" height="40"/><rect x="296" y="191" width="8" height="45"/><rect x="196" y="216" width="8" height="24"/><rect x="20" y="170" width="24" height="40"/><rect x="340" y="170" width="24" height="40"/></g>`,
+ `<rect width="400" height="240" fill="#262626"/><rect y="195" width="400" height="45" fill="#171717"/>${shelf(20,130)}${shelf(250,130)}
+  <g fill="#5e584c"><rect x="30" y="50" width="40" height="30"/><rect x="80" y="90" width="50" height="30"/><rect x="40" y="130" width="60" height="30"/><rect x="260" y="50" width="50" height="30"/><rect x="320" y="130" width="50" height="30"/><rect x="180" y="150" width="46" height="45"/><rect x="190" y="112" width="36" height="38"/></g>
+  <path d="M200 0v40" stroke="#666" stroke-width="2"/><circle cx="200" cy="46" r="9" fill="#fff" opacity=".6"/>`,
+ hall(false)+`<text x="200" y="130" text-anchor="middle" fill="#ddd" font-size="9" font-family="Courier New">EXIT</text>`,
+ hall(true),
+ `<rect width="400" height="240" fill="#222"/><rect y="190" width="400" height="50" fill="#151515"/><path d="M0 40H400M0 62H400" stroke="#4c4c4c" stroke-width="10"/>
+  <g fill="#3a3a3a"><rect x="20" y="80" width="50" height="115"/><rect x="74" y="80" width="50" height="115"/><rect x="128" y="80" width="50" height="115"/></g><g stroke="#222" stroke-width="3"><path d="M45 80v115M99 80v115M153 80v115"/></g>
+  <g fill="#5e584c"><rect x="250" y="150" width="60" height="45"/><rect x="320" y="165" width="50" height="30"/><rect x="262" y="112" width="44" height="38"/></g>
+  <path d="M300 0v30" stroke="#666" stroke-width="2"/><circle cx="300" cy="36" r="9" fill="#fff" opacity=".6"/>`
+].map(s=>`<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${s}</svg>`);
+
+/* ---------- GAME LOGIC (unchanged) ---------- */
+/* ---------- SOUND (synthesized with Web Audio, no files needed) ---------- */
+let lastHr=0,outSounded=false;
+const SFX=(()=>{
+  let ac,out,nb,amb,ct,boxT,buzzN,muted=false;
+  function init(){
+    if(!ac){
+      ac=new(window.AudioContext||window.webkitAudioContext)();
+      const c=ac.createDynamicsCompressor();
+      out=ac.createGain();out.gain.value=muted?0:.9;out.connect(c);c.connect(ac.destination);
+      nb=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate);
+      const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    }
+    if(ac.state==="suspended")ac.resume();
+  }
+  function tone(f,d,o={}){
+    if(!ac)return;const t=ac.currentTime+(o.at||0);
+    const os=ac.createOscillator(),g=ac.createGain();
+    os.type=o.type||"sine";os.frequency.setValueAtTime(f,t);
+    if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+d);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(o.v||.2,t+(o.a||.01));
+    g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    os.connect(g);g.connect(o.dest||out);os.start(t);os.stop(t+d+.05);
+  }
+  function noise(d,o={}){
+    if(!ac)return;const t=ac.currentTime+(o.at||0);
+    const s=ac.createBufferSource();s.buffer=nb;s.loop=true;
+    const f=ac.createBiquadFilter();f.type=o.ft||"lowpass";f.frequency.setValueAtTime(o.f||800,t);
+    if(o.fto)f.frequency.exponentialRampToValueAtTime(o.fto,t+d);
+    const g=ac.createGain();g.gain.setValueAtTime(o.v||.3,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    s.connect(f);f.connect(g);g.connect(o.dest||out);s.start(t);s.stop(t+d+.05);
+  }
+  function creak(){
+    clearTimeout(ct);
+    ct=setTimeout(()=>{
+      if(!amb)return;
+      const r=Math.random();
+      if(r<.4)tone(180+Math.random()*80,.9,{type:"sawtooth",to:90,v:.04});
+      else if(r<.8){tone(55,.4,{to:30,v:.15});noise(.2,{f:300,v:.12});}
+      else{noise(.5,{ft:"bandpass",f:700,fto:300,v:.08});}
+      creak();
+    },6000+Math.random()*10000);
+  }
+  function ambient(){
+    if(!ac||amb)return;
+    const t=ac.currentTime;
+    const g=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.1,t+3);g.connect(out);
+    const lp=ac.createBiquadFilter();lp.type="lowpass";lp.frequency.value=140;lp.connect(g);
+    const os=[50,50.6,75].map(f=>{const o=ac.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(lp);o.start();return o});
+    const n=ac.createBufferSource();n.buffer=nb;n.loop=true;
+    const nf=ac.createBiquadFilter();nf.type="bandpass";nf.frequency.value=300;
+    const ng=ac.createGain();ng.gain.value=.03;n.connect(nf);nf.connect(ng);ng.connect(g);n.start();
+    const lfo=ac.createOscillator(),lg=ac.createGain();lfo.frequency.value=.15;lg.gain.value=30;lfo.connect(lg);lg.connect(lp.frequency);lfo.start();
+    amb={stop(){g.gain.cancelScheduledValues(ac.currentTime);g.gain.setTargetAtTime(0,ac.currentTime,.1);
+      setTimeout(()=>{os.forEach(o=>o.stop());n.stop();lfo.stop()},700)}};
+    creak();
+  }
+  function buzz(on){
+    if(!ac)return;
+    if(on&&!buzzN){
+      const o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();
+      o.type="sawtooth";o.frequency.value=120;f.type="bandpass";f.frequency.value=900;g.gain.value=.06;
+      o.connect(f);f.connect(g);g.connect(out);o.start();buzzN={o,g};
+    }else if(!on&&buzzN){
+      const b=buzzN;buzzN=null;b.g.gain.setTargetAtTime(0,ac.currentTime,.02);setTimeout(()=>b.o.stop(),200);
+    }
+  }
+  function musicBox(){
+    if(!ac||boxT)return;
+    const seq=[392,392,330,392,466,440,392,349];let i=0;
+    boxT=setInterval(()=>{
+      const f=seq[i%seq.length]*(1+(Math.random()-.5)*.012);
+      tone(f,1.3,{v:.13});tone(f*2,.8,{v:.04,type:"triangle"});
+      if(i%4===3)tone(65,.3,{to:40,v:.2+Math.min(i,40)*.01,type:"triangle"});
+      i++;
+    },520);
+  }
+  return{
+    init,ambient,buzz,
+    stopAll(){if(amb){amb.stop();amb=null}clearTimeout(ct);buzz(false);clearInterval(boxT);boxT=null},
+    setMute(m){muted=m;if(out)out.gain.value=m?0:.9},
+    click(){noise(.04,{ft:"highpass",f:3000,v:.3});tone(1800,.03,{type:"square",v:.03})},
+    door(close){
+      if(close){noise(.3,{f:500,fto:80,v:.9});tone(90,.4,{to:35,v:.6,type:"triangle"});tone(1200,.08,{type:"square",v:.05,at:.05})}
+      else{noise(.25,{f:1200,fto:300,v:.3});tone(200,.2,{to:120,v:.15,type:"sawtooth"})}
+    },
+    cam(open){tone(open?660:440,.07,{type:"square",v:.05});tone(open?990:330,.07,{type:"square",v:.05,at:.08});noise(.25,{ft:"bandpass",f:2500,v:.15})},
+    blip(){noise(.12,{ft:"bandpass",f:2000,v:.18});tone(1200,.04,{type:"square",v:.04})},
+    step(){tone(70,.12,{to:45,v:.12,type:"triangle"});noise(.08,{f:300,v:.1})},
+    knock(){[0,.25,.5].forEach(a=>{tone(110,.2,{to:50,v:.6,type:"triangle",at:a});noise(.15,{f:700,fto:200,v:.5,at:a})})},
+    thud(){tone(70,.25,{to:40,v:.4,type:"triangle"});noise(.2,{f:400,fto:100,v:.4})},
+    chime(){[880,1320,2430].forEach((f,i)=>tone(f,2.2,{v:.1/(i+1),a:.005}))},
+    powerOut(){
+      if(amb){amb.stop();amb=null}
+      tone(200,2.2,{to:30,type:"sawtooth",v:.25});noise(1.5,{f:2000,fto:60,v:.3});
+      setTimeout(musicBox,2000);
+    },
+    jumpscare(){
+      if(!ac)return;
+      const T=ac.currentTime,t=T+.33;
+      // 1) dead-silence tension: thin rising whine + low rumble
+      tone(2800,.33,{to:5200,v:.07});tone(40,.33,{to:70,v:.3,type:"sawtooth"});
+      // 2) the scream chain: heavily distorted, chopped, metallic
+      const mk=c=>{const w=ac.createWaveShaper(),cv=new Float32Array(512);for(let i=0;i<512;i++)cv[i]=Math.tanh((i/256-1)*c);w.curve=cv;return w};
+      const ws=mk(18),g=ac.createGain();
+      g.gain.setValueAtTime(.8,t);g.gain.setValueAtTime(.8,t+1.9);g.gain.exponentialRampToValueAtTime(.0001,t+2.25);
+      ws.connect(g);g.connect(out);
+      const ch=ac.createOscillator(),cg=ac.createGain();
+      ch.type="square";ch.frequency.value=22;cg.gain.value=.35;ch.connect(cg);cg.connect(g.gain);ch.start(t);ch.stop(t+1.2);
+      [520,540,780,260].forEach((f,i)=>{
+        const o=ac.createOscillator();o.type=i%2?"square":"sawtooth";
+        o.frequency.setValueAtTime(f,t);
+        o.frequency.exponentialRampToValueAtTime(f*1.9,t+.25);
+        o.frequency.exponentialRampToValueAtTime(f*1.3,t+1.2);
+        o.frequency.exponentialRampToValueAtTime(f*.5,t+2.2);
+        const vib=ac.createOscillator(),vg=ac.createGain();
+        vib.frequency.value=13+i;vg.gain.value=f*.06;vib.connect(vg);vg.connect(o.frequency);vib.start(t);vib.stop(t+2.3);
+        const bp=ac.createBiquadFilter();bp.type="bandpass";bp.frequency.value=[900,1400,2400,700][i];bp.Q.value=2;
+        o.connect(bp);bp.connect(ws);o.start(t);o.stop(t+2.3);
+      });
+      // robotic ring-modulated screech
+      const car=ac.createOscillator(),rg=ac.createGain(),mod=ac.createOscillator();
+      car.type="sawtooth";car.frequency.setValueAtTime(700,t);car.frequency.exponentialRampToValueAtTime(1800,t+.4);car.frequency.exponentialRampToValueAtTime(400,t+2);
+      mod.type="square";mod.frequency.value=87;rg.gain.value=0;mod.connect(rg.gain);car.connect(rg);rg.connect(ws);
+      car.start(t);mod.start(t);car.stop(t+2.3);mod.stop(t+2.3);
+      // static wall + crushing impact
+      noise(2.1,{ft:"highpass",f:1500,v:1,dest:ws,at:.33});
+      tone(60,1.6,{to:18,v:1,at:.33});noise(.3,{f:180,v:1,at:.33});
+      tone(90,.4,{to:30,v:.9,type:"triangle",at:.33});
+      // 3) hard cut to dead hiss
+      noise(1.2,{ft:"bandpass",f:3000,v:.12,at:2.6});
+    },
+    win(){
+      [523,659,784,1047].forEach((f,i)=>{tone(f,1.6,{type:"triangle",v:.15,at:i*.3});tone(f*2.76,1,{v:.03,at:i*.3})});
+      noise(3,{ft:"bandpass",f:1800,v:.12,at:1});
+    }
+  };
+})();
+function toggleMute(){
+  const m=document.getElementById("muteBtn").dataset.m!=="1";
+  document.getElementById("muteBtn").dataset.m=m?"1":"0";
+  document.getElementById("muteBtn").textContent=m?"SOUND: OFF":"SOUND: ON";
+  SFX.setMute(m);
+}
+
+const rooms=[
+  {name:"SHOW STAGE",description:"Where the band performs."},
+  {name:"DINING AREA",description:"Tables and chairs are scattered around."},
+  {name:"STORAGE ROOM",description:"Old equipment lies everywhere."},
+  {name:"WEST HALL",description:"A dark hallway leading to your office."},
+  {name:"EAST HALL",description:"Something might be watching you."},
+  {name:"BACK ROOM",description:"You probably shouldn't be here."}
+];
+
+let running=false;
+let power=100;
+let hour=0;
+let currentCam=0;
+let cameraOpen=false;
+let doors={left:false,right:false};
+let lights={left:false,right:false};
+let enemies=[];
+let gameTimers=[];
+let startTime=0;
+let lastPower=Date.now();
+let sceneIdx=-1;
+
+function makeEnemies(){
+  enemies=[
+    {name:"FREDBEAR",face:"bear",side:"left",route:[0,1,2,3],pos:0,aggression:0.35,attack:false},
+    {name:"PONNER",face:"bunny",side:"right",route:[0,2,1,4],pos:0,aggression:0.30,attack:false},
+    {name:"RAVENGER",face:"fox",side:"left",route:[5,2,3],pos:0,aggression:0.40,attack:false}
+  ];
+}
+
+function startGame(){
+  clearAllTimers();
+  power=100;
+  hour=0;
+  currentCam=0;
+  sceneIdx=-1;
+  cameraOpen=false;
+  doors={left:false,right:false};
+  lights={left:false,right:false};
+  makeEnemies();
+  running=true;
+  lastPower=Date.now();
+  startTime=Date.now();
+  lastHr=0;outSounded=false;
+  SFX.init();SFX.ambient();
+
+  document.getElementById("overlay").style.display="none";
+  document.getElementById("scare").classList.remove("show","dead");
+  document.getElementById("camera").classList.remove("show");
+  document.getElementById("leftDoor").classList.remove("closed");
+  document.getElementById("rightDoor").classList.remove("closed");
+
+  updateUI();
+
+  gameTimers.push(setInterval(gameTick,1000));
+  gameTimers.push(setInterval(moveEnemies,5000));
+  gameTimers.push(setInterval(updateClock,1000));
+  gameTimers.push(setInterval(updatePower,1000));
+}
+
+function clearAllTimers(){
+  SFX.stopAll();
+  gameTimers.forEach(clearInterval);
+  gameTimers=[];
+}
+
+function gameTick(){
+  if(!running)return;
+
+  enemies.forEach(e=>{
+    if(!e.attack)return;
+
+    // Wait until the attack timer expires
+    if(Date.now() < e.attackAt)return;
+
+    if(!doors[e.side]){
+      loseGame(e);
+    }else{
+      // Door successfully blocked the animatronic
+      e.attack=false;
+      e.attackAt=0;
+      e.pos=Math.max(0,e.pos-2);
+
+      showMessage(e.name+" RETREATED!");SFX.thud();
+      updateCamera();
+    }
+  });
+}
+
+function moveEnemies(){
+  if(!running)return;
+
+  enemies.forEach(e=>{
+    if(e.attack)return;
+
+    let chance=e.aggression+hour*0.07;
+    if(cameraOpen && currentCam===e.route[e.pos]){
+      chance*=0.55;
+    }
+
+    // Animatronics move only when their movement roll succeeds.
+    if(Math.random()<chance){
+      if(e.pos < e.route.length-1){
+        e.pos++;SFX.step();
+      }
+
+      // Reaching the final room starts a 5-15 second warning window.
+      if(e.pos===e.route.length-1){
+        e.attack=true;
+        let waitTime=Math.floor(Math.random()*10000)+5000;
+        e.attackAt=Date.now()+waitTime;
+        showMessage(e.name+" IS OUTSIDE! CLOSE THE DOOR!");SFX.knock();
+      }
+    }
+  });
+
+  updateCamera();
+  checkLights();
+}
+
+function updateClock(){
+  if(!running)return;
+  let elapsed=(Date.now()-startTime)/1000;
+  hour=Math.floor(elapsed/68); // 68s per hour = ~6.8 min night, faster than the original FNAF
+
+  if(hour>=6){
+    winGame();
+    return;
+  }
+
+  if(hour!==lastHr){lastHr=hour;if(hour>0)SFX.chime();}
+  document.getElementById("clock").textContent=
+    (hour===0?12:hour)+" AM";
+}
+
+function updatePower(){
+  if(!running)return;
+
+  let drain=0.09;
+  if(doors.left)drain+=0.22;
+  if(doors.right)drain+=0.22;
+  if(lights.left)drain+=0.13;
+  if(lights.right)drain+=0.13;
+  if(cameraOpen)drain+=0.14;
+
+  //fnaf style power drain, 0.7 (SLIGHT SLOWER THAN FNAF)
+  power-=drain*0.7;
+
+  if(power<=0){
+    power=0;
+    doors.left=false;
+    doors.right=false;
+    lights.left=false;
+    lights.right=false;
+    cameraOpen=false;
+    document.getElementById("camera").classList.remove("show");
+    showMessage("POWER OUT...");
+    if(!outSounded){outSounded=true;SFX.powerOut();}
+    updateUI();
+
+    // Power outage leaves you vulnerable.
+    gameTimers.push(setTimeout(()=>{
+      if(running)loseGame({
+        name:"THE DARK",
+        face:"bear"
+      });
+    },6000));
+    return;
+  }
+  updateUI();
+}
+
+function updateUI(){
+  document.getElementById("power").textContent=
+    "POWER: "+Math.ceil(power)+"%";
+
+  document.getElementById("power").style.color=
+    power<25?"#ff4444":"#77ff9b";
+
+  document.querySelector("#pbar i").style.width=power+"%";
+  document.getElementById("game").classList.toggle("low",power<25);
+  document.getElementById("game").classList.toggle("out",power<=0);
+
+  ["left","right"].forEach(side=>{
+    document.getElementById(side+"Door").classList.toggle(
+      "closed",doors[side]);
+    document.getElementById(side+"Door").classList.toggle(
+      "light",lights[side]&&!doors[side]);
+
+    document.getElementById(side+"Button").classList.toggle(
+      "active",doors[side]);
+
+    document.getElementById(side+"Light").classList.toggle(
+      "active",lights[side]);
+  });
+
+  document.getElementById("camButton").classList.toggle(
+    "active",cameraOpen);
+
+  updateDoorViews();
+  SFX.buzz(lights.left||lights.right);
+}
+
+// Shows whoever is waiting outside when the hallway light is on
+function updateDoorViews(){
+  ["left","right"].forEach(side=>{
+    const e=enemies.find(x=>x.side===side&&x.attack);
+    const show=lights[side]&&!doors[side]&&e;
+    const w=document.getElementById(side+"Who");
+    const k=show?e.face:"";
+    if(w.dataset.k!==k){
+      w.dataset.k=k;
+      w.innerHTML=show?sprite(e.face):"";
+    }
+  });
+}
+
+function toggleDoor(side){
+  if(!running||power<=0)return;
+  doors[side]=!doors[side];
+  lights[side]=false;
+  SFX.door(doors[side]);
+  updateUI();
+}
+
+function toggleLight(side){
+  if(!running||power<=0)return;
+  if(cameraOpen)return;
+
+  lights[side]=!lights[side];
+  SFX.click();
+
+  if(lights[side]){
+    let enemy=enemies.find(e=>
+      e.side===side&&e.attack
+    );
+    showMessage(enemy?enemy.name+" IS OUTSIDE!":"HALLWAY CLEAR");
+  }
+
+  updateUI();
+  checkLights();
+}
+
+function checkLights(){
+  if(!running)return;
+
+  ["left","right"].forEach(side=>{
+    if(lights[side]){
+      let enemy=enemies.find(e=>
+        e.side===side&&e.attack
+      );
+      if(enemy){
+        showMessage(enemy.name+" IS OUTSIDE!");
+      }
+    }
+  });
+  updateDoorViews();
+}
+
+function toggleCamera(){
+  if(!running || power <= 0) return;
+
+  cameraOpen = !cameraOpen;
+  SFX.cam(cameraOpen);
+
+  lights.left = false;
+  lights.right = false;
+
+  // Hide office controls while cameras are open
+  document.querySelector(".controls").style.display =
+    cameraOpen ? "none" : "flex";
+
+  document.getElementById("camera").classList.toggle(
+    "show", cameraOpen
+  );
+
+  updateUI();
+
+  if(cameraOpen) updateCamera();
+}
+
+function selectCam(index){
+  if(!running||!cameraOpen)return;
+  currentCam=index;
+  SFX.blip();
+  updateCamera();
+}
+
+function updateCamera(){
+  if(!cameraOpen)return;
+
+  let room=rooms[currentCam];
+
+  document.getElementById("roomName").textContent=room.name;
+
+  if(sceneIdx!==currentCam){
+    sceneIdx=currentCam;
+    document.getElementById("camScene").innerHTML=SC[currentCam];
+    const r=document.getElementById("camRoom");
+    r.classList.remove("glitch");
+    void r.offsetWidth;
+    r.classList.add("glitch");
+  }
+
+  let present=enemies.filter(e=>
+    e.route[e.pos]===currentCam
+  );
+
+  document.getElementById("camCharacters").innerHTML=
+    present.map(e=>sprite(e.face)).join("");
+
+  document.getElementById("roomDescription").textContent=
+    present.length
+    ?"MOVEMENT DETECTED: "+
+      present.map(e=>e.name).join(", ")
+    :room.description;
+
+  updateMap();
+}
+
+function updateMap(){
+  // Highlight the currently selected camera
+  document.querySelectorAll(".map-room").forEach(el=>{
+    let cam=Number(el.dataset.cam);
+    el.classList.toggle("selected",cam===currentCam);
+  });
+  document.querySelectorAll("#camButtons button").forEach((b,i)=>{
+    b.classList.toggle("active",i===currentCam);
+  });
+
+  // Clear all old animatronic markers
+  for(let i=0;i<6;i++){
+    document.getElementById("map"+i).innerHTML="";
+  }
+
+  // Put each animatronic in its actual current room
+  enemies.forEach(e=>{
+    let room=e.route[e.pos];
+    let marker=document.getElementById("map"+room);
+
+    if(marker){
+      marker.innerHTML+=sprite(e.face);
+    }
+  });
+}
+
+function showMessage(msg){
+  const el=document.getElementById("message");
+  el.textContent=msg;
+  clearTimeout(window.messageTimeout);
+  window.messageTimeout=setTimeout(()=>{
+    el.textContent="";
+  },2000);
+}
+
+function loseGame(enemy){
+  if(!running)return;
+  running=false;
+  clearAllTimers();
+
+  const sp=sprite(enemy.face,true);
+  SFX.jumpscare();
+  document.getElementById("scareFace").innerHTML='<div class="gh r">'+sp+'</div><div class="gh c">'+sp+'</div><div class="mn">'+sp+'</div><div class="s1">'+sp+'</div><div class="s2">'+sp+'</div>';
+  setTimeout(()=>document.getElementById("scare").classList.add("dead"),1700);
+  document.getElementById("scare").classList.add("show");
+
+  setTimeout(()=>{
+    document.getElementById("scare").classList.remove("show","dead");
+    document.getElementById("overlay").style.display="flex";
+    document.querySelector("#overlay h1").textContent="GAME OVER";
+    document.querySelector("#overlay h1").style.color="#ff4a3d";
+    document.querySelector("#overlay p").textContent=
+      enemy.name+" GOT INTO YOUR OFFICE. You survived until "+
+      document.getElementById("clock").textContent+".";
+    document.querySelector("#overlay button").textContent="TRY AGAIN";
+  },3300);
+}
+
+function winGame(){
+  if(!running)return;
+  running=false;
+  clearAllTimers();
+
+  SFX.win();
+  document.getElementById("camera").classList.remove("show");
+  document.getElementById("overlay").style.display="flex";
+  document.querySelector("#overlay h1").textContent="6 AM!";
+  document.querySelector("#overlay h1").style.color="#7dff9a";
+  document.querySelector("#overlay p").textContent=
+    "CONGRATULATIONS! You survived the night. "+
+    "The animatronics have returned to the stage... for now.";
+  document.querySelector("#overlay button").textContent="PLAY AGAIN";
+}
+
+document.addEventListener("keydown",e=>{
+  if(!running)return;
+  if(e.repeat)return;
+
+  switch(e.key.toLowerCase()){
+    case "m":toggleMute();break;
+    case "q":toggleDoor("left");break;
+    case "e":toggleDoor("right");break;
+    case "a":toggleLight("left");break;
+    case "d":toggleLight("right");break;
+    case " ":
+      e.preventDefault();
+      toggleCamera();
+      break;
+    case "1":selectCam(0);break;
+    case "2":selectCam(1);break;
+    case "3":selectCam(2);break;
+    case "4":selectCam(3);break;
+    case "5":selectCam(4);break;
+    case "6":selectCam(5);break;
+  }
+});
+</script>
+</body>
+</html>
